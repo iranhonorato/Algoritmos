@@ -20,11 +20,15 @@ class Solution:
                 new = curr + nums[j]
                 backtracking(j, new)
 
+            return
+
         for i in range(len(nums)):
             backtracking(i, nums[i])
             ans = max(tmp[0], ans)
 
         return ans 
+
+
 
 
     def rob_slow(self, nums: List[int]) -> int:
@@ -52,6 +56,8 @@ class Solution:
             ans = max(ans, backtracking(i))
 
         return ans
+
+
 
 
 
