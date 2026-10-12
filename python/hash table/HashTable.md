@@ -1,212 +1,353 @@
-# Hash Table
+# Aula completa: Hash Table, HashMap e HashSet
 
-Uma **hash table** é uma estrutura de dados que guarda entradas em um array e usa a **chave** de cada entrada para calcular em qual posição desse array ela deve ficar. Como a posição é calculada (e não procurada), buscar, inserir e remover custam **O(1) em média**.
+## **Definição:** 
 
-Ela é o mecanismo por trás de duas coleções muito usadas:
+Uma Hash Table é uma estrutura de dados que utiliza uma função Hash para converter uma chave (que pode ser um identificador ou o próprio elemento) em um endereço de memória. Isso permite armazenar e recuperar dados de forma dispersa com acesso direto em tempo constante, seja associando essa chave a um valor externo (como nos dicionários) ou usando o próprio elemento como chave (como nos conjuntos).
 
-- **HashMap** (`dict` em Python): associa uma chave a um valor e permite encontrar o valor usando a chave.
-- **HashSet** (`set` em Python): armazena elementos únicos e permite verificar rapidamente se um elemento está presente.
+## 1. A ideia geral
 
----
+Imagine que você guarda nomes e idades:
 
-## 1. Da chave até a posição
+- Ana → 25
+- Bia → 30
+- Caio → 19
 
-```
-chave  →  função hash  →  código hash  →  índice  →  slot (bucket) do array
-"bia"                      123456         123456 mod 10 = 6      tabela[6]
-```
+Você quer encontrar rapidamente a idade de alguém pelo nome. Uma solução simples seria olhar os nomes um por um até encontrar o procurado. Isso funciona, mas pode exigir muitas comparações.
 
-1. A **função hash** transforma a chave em um número inteiro, o **código hash**.
-2. O código hash é reduzido a um **índice válido** entre `0` e `m − 1`, em que `m` é o número de posições da tabela.
-3. A tabela vai direto a esse índice para ler ou gravar a entrada.
+Uma **Hash Table** (tabela hash) usa a chave — neste exemplo, o nome — para calcular uma posição inicial em uma tabela. Assim, em vez de começar examinando todos os dados, ela vai diretamente a uma região onde espera encontrar a entrada.
 
-Dois pontos que costumam confundir:
+A ideia é:
 
-- O código hash **não é um endereço de memória**. Ele é só uma etapa intermediária para chegar a um índice do array interno.
-- A redução para índice **nem sempre é `mod`**. O resto da divisão é o método mais comum, mas também existem a máscara de bits (quando `m` é potência de 2, basta pegar os bits finais do código) e o método da multiplicação. Alguns materiais chamam de "função hash" o caminho inteiro, da chave até o índice.
+    chave → função hash → código hash → índice → posição candidata na tabela
 
----
+Essa posição é candidata porque pode haver colisões. A tabela ainda precisa confirmar que encontrou a chave certa.
 
-## 2. Colisões
+> A tabela hash não necessariamente calcula um endereço físico de memória. Ela calcula um índice interno, como a posição 6 de um array.
 
-Existem muito mais chaves possíveis do que posições na tabela, então chaves diferentes inevitavelmente acabam no mesmo índice. Isso é uma **colisão**, e é uma situação normal, não um erro.
+## 2. Do início ao fim: como a chave leva à posição
 
-Com `índice = chave mod 7`:
+Vamos dividir o processo em etapas.
 
-```
-10 mod 7 = 3
-17 mod 7 = 3
-24 mod 7 = 3      → as três chaves disputam o índice 3
-```
+### Etapa 1: temos uma chave
 
-Uma colisão pode acontecer mesmo entre chaves com códigos hash diferentes: basta que os dois códigos sejam reduzidos ao mesmo índice.
+A chave é a informação usada para localizar uma entrada. Pode ser um número, uma string, uma tupla ou outro objeto que possa ser usado como chave.
 
-### 2.1 Encadeamento (chaining)
+Exemplo: a chave é 17.
 
-Cada slot do array guarda uma **referência** (um ponteiro, uma "seta") para o primeiro nó de uma lista ligada. O slot não contém a lista inteira, só indica onde ela começa.
+### Etapa 2: a função hash calcula um código hash
 
-```
-índice 0 → vazio
-índice 1 → vazio
-índice 2 → vazio
-índice 3 → [chave: 10 | valor: "maçã" | próx] → [chave: 17 | valor: "banana" | próx] → fim
-índice 4 → vazio
-```
+Uma **função hash** transforma a chave em um número inteiro chamado **código hash**.
 
-Cada nó guarda **a chave e o valor juntos**, além da ligação para o próximo nó. A seta entre os nós significa apenas "o próximo nó é este"; ela não significa que "maçã aponta para banana".
+    chave 17 → função hash → código hash
 
-Busca pela chave `17`:
+O código hash não é, por si só, o endereço da entrada. Ele é um resultado intermediário.
 
-1. Calcula o índice: `17 mod 7 = 3`.
-2. Vai ao slot 3 e segue a referência até o primeiro nó.
-3. Compara a chave do nó com `17`. Não é (`10`), avança.
-4. Encontra `17` e devolve o valor guardado **naquele mesmo nó**: `"banana"`.
+### Etapa 3: o código hash é convertido em um índice válido
 
-A lista não precisa ser uma lista ligada: algumas implementações usam um array dinâmico ou até uma árvore em cada slot. O que importa é o slot conseguir guardar várias entradas.
+Se a tabela tem m posições, os índices precisam estar entre 0 e m − 1. Uma técnica didática comum é usar o resto da divisão:
 
-### 2.2 Endereçamento aberto (open addressing)
+    índice = código hash mod m
 
-Não há listas: todas as entradas ficam **dentro do próprio array**. Se o índice calculado já está ocupado por outra chave, a tabela segue uma regra (uma sequência de sondagem) para tentar outras posições, até achar a chave ou um slot livre.
+Por exemplo, se o código hash fosse 123456 e a tabela tivesse 10 posições:
 
-```
-inserir 10 → índice 3 livre      → grava em 3
-inserir 17 → índice 3 ocupado    → tenta 4, livre → grava em 4
-buscar 17  → olha 3 (é 10, não)  → olha 4 (é 17, achou)
-```
+    123456 mod 10 = 6
 
-O `dict` e o `set` do CPython usam endereçamento aberto.
+O índice calculado seria 6.
 
-### 2.3 Hash aponta, igualdade confirma
+O módulo é uma forma de obter o índice, mas não é a única. Implementações podem usar outras formas de reduzir o código hash a um índice válido, como máscaras de bits ou métodos baseados em multiplicação.
 
-Nas duas estratégias, o hash só diz **onde começar a procurar**. Quem confirma que a entrada é a certa é a **comparação de igualdade** entre as chaves. Ter o mesmo hash não prova que duas chaves são iguais.
+Alguns materiais usam “função hash” para se referir ao processo completo, da chave até o índice. Outros explicam separadamente o código hash e sua conversão em índice.
 
----
+### Etapa 4: a tabela consulta a posição candidata
 
-## 3. Complexidade
+A tabela acessa o slot, também chamado de **bucket**, correspondente ao índice calculado. Se encontrar ali a chave procurada, termina. Se encontrar outra chave ou uma colisão, aplica uma estratégia de resolução.
+
+## 3. O que é uma colisão?
+
+Uma **colisão** acontece quando duas chaves diferentes acabam direcionadas ao mesmo índice da tabela.
+
+Isso é inevitável em geral: o conjunto de chaves possíveis costuma ser muito maior que o número de posições disponíveis. Várias chaves precisam compartilhar as posições da tabela.
+
+Considere, para simplificar, uma tabela com 7 posições e a regra:
+
+    índice = chave mod 7
+
+Então:
+
+    10 mod 7 = 3
+    17 mod 7 = 3
+    24 mod 7 = 3
+
+As três chaves chegam ao índice 3.
+
+Uma colisão também pode ocorrer entre códigos hash diferentes: basta que, ao serem convertidos em índices, ambos resultem no mesmo índice.
+
+**Ter o mesmo hash não significa que duas chaves são iguais.** O hash ajuda a direcionar a busca; a comparação de igualdade confirma qual chave foi encontrada.
+
+## 4. Como resolver colisões?
+
+Há diferentes estratégias. Duas importantes são o encadeamento e o endereçamento aberto.
+
+### 4.1 Encadeamento (chaining)
+
+No encadeamento, cada posição da tabela guarda uma referência — pense em uma seta ou ponteiro — para uma coleção de entradas que chegaram àquela posição. Na explicação clássica, essa coleção é uma lista ligada.
+
+Para um mapa, cada nó guarda a chave e o valor juntos, além da ligação para o próximo nó:
+
+    array[3]
+       |
+       v
+    [chave: 10 | valor: "maçã" | próximo]
+       |
+       v
+    [chave: 17 | valor: "banana" | próximo: fim]
+
+A seta entre os nós significa “o próximo nó da lista está aqui”. Ela não significa que “maçã aponta para banana”. Cada nó tem seu próprio par chave–valor.
+
+A posição do array não guarda a lista inteira dentro dela. Ela guarda uma referência ao primeiro nó da lista.
+
+Uma busca pela chave 17 funciona assim:
+
+1. Calcular o índice: 17 mod 7 = 3.
+2. Acessar a posição 3.
+3. Seguir sua referência até o primeiro nó.
+4. Comparar a chave do primeiro nó, 10, com 17. Não são iguais.
+5. Seguir para o próximo nó.
+6. Comparar a chave seguinte, 17, com a chave procurada. São iguais.
+7. Devolver o valor desse mesmo nó: "banana".
+
+A lista ligada é uma estratégia clássica; outras implementações podem usar outras coleções em cada posição.
+
+### 4.2 Endereçamento aberto (open addressing)
+
+No endereçamento aberto, todas as entradas ficam nos próprios slots do array. Se o índice calculado estiver ocupado por outra chave, a tabela segue uma sequência de posições candidatas, chamada **sequência de sondagem**, até encontrar a chave ou uma posição livre.
+
+Exemplo simplificado com sondagem linear:
+
+    inserir 10 → índice 3 livre       → grava em 3
+    inserir 17 → índice 3 ocupado     → tenta 4, livre → grava em 4
+    buscar 17  → olha 3: encontra 10  → tenta 4: encontra 17
+
+O exemplo mostra apenas a ideia. As regras exatas de sondagem variam entre implementações.
+
+O dict e o set do CPython resolvem colisões por endereçamento aberto. Portanto, em Python, não imagine necessariamente uma lista ligada em cada posição.
+
+## 5. HashMap: associação entre chave e valor
+
+Um **HashMap** é uma coleção que associa cada chave a um valor.
+
+    chave → valor
+    "ana" → 25
+    "bia" → 30
+
+Com ele, podemos perguntar:
+
+> Qual valor está associado à chave "bia"?
+
+A tabela usa a chave para localizar a entrada. Quando encontra a chave, obtém o valor que está associado a ela.
+
+Operações comuns de um mapa são:
+
+- inserir uma associação;
+- consultar o valor pela chave;
+- verificar se uma chave existe;
+- atualizar o valor associado;
+- remover uma associação.
+
+Em Python, a coleção correspondente é o **dict**. O nome da classe nativa é dict; “hash map” é uma descrição da estrutura e do comportamento.
+
+No Python:
+
+    idades = {"ana": 25, "bia": 30}
+
+    idades["caio"] = 19       # insere uma nova chave e valor
+    idades["bia"] = 31        # atualiza o valor associado a "bia"
+    idade = idades["bia"]     # obtém 31
+    existe = "ana" in idades  # True: verifica as chaves
+    del idades["ana"]         # remove a associação
+
+Cada chave é única. Se atribuirmos um novo valor à chave "bia", o valor anterior é substituído; não surge uma segunda entrada com a mesma chave.
+
+## 6. HashSet: conjunto de elementos únicos
+
+Um **HashSet** é uma coleção que guarda elementos sem associar a cada um um valor separado. Seu uso comum é verificar rapidamente se um elemento está presente, mantendo os elementos únicos.
+
+    {"ana", "bia", "caio"}
+
+No conjunto, o próprio elemento faz o papel da chave usada na busca. Não há um valor associado separado, como há em um HashMap.
+
+Em Python, a coleção correspondente é **set**:
+
+    vistos = {"ana", "bia"}
+
+    vistos.add("caio")        # adiciona
+    vistos.add("ana")         # não cria uma segunda "ana"
+    existe = "bia" in vistos  # True
+    vistos.remove("bia")      # remove
+
+É útil pensar no set como uma tabela que usa o próprio elemento para calcular onde procurar. Algumas implementações constroem um HashSet internamente sobre um HashMap, usando um valor interno sem significado para quem usa o conjunto.
+
+## 7. HashMap e HashSet comparados
+
+| Característica | HashMap (dict em Python) | HashSet (set em Python) |
+|---|---|---|
+| O que guarda | Pares chave–valor | Elementos únicos |
+| O que é usado no hash | A chave | O próprio elemento |
+| Pergunta típica | “Qual valor corresponde a esta chave?” | “Este elemento está no conjunto?” |
+| Repetição | Uma chave repetida atualiza/substitui seu valor | Um elemento repetido não cria uma cópia |
+| Exemplo | "bia" → 30 | {"ana", "bia"} |
+
+O mecanismo de hashing pode ser parecido, mas a finalidade das coleções é diferente.
+
+## 8. Como funciona a expressão x in dicionario?
+
+Em Python:
+
+    x in dicionario
+
+pergunta se **x está entre as chaves** do dicionário. Não procura nos valores.
+
+    idades = {"ana": 25, "bia": 30}
+
+    "bia" in idades          # True
+    30 in idades              # False: 30 é um valor, não uma chave
+    30 in idades.values()     # True: aqui a busca é entre os valores
+
+A consulta por chave ocorre conceitualmente assim:
+
+1. Python obtém o objeto x.
+2. Calcula o hash de x.
+3. Usa o hash para localizar uma posição candidata.
+4. Confere a igualdade entre x e a chave armazenada.
+5. Se houver colisão, tenta outras posições de acordo com a estratégia da tabela.
+6. Retorna True se encontrar uma chave igual; retorna False se concluir que ela não está no dicionário.
+
+A expressão não é “lida da direita para a esquerda”. Ela significa “x está em dicionario?”. O operador in é o teste de pertencimento; o dicionário realiza a busca.
+
+## 9. Complexidade: o que significa O(1) em média?
+
+A tabela hash é conhecida por buscas rápidas, mas dizer simplesmente “tudo custa O(1)” esconde as condições.
 
 | Operação | Caso médio | Pior caso |
-|----------|-----------|-----------|
-| Buscar   | O(1)      | O(n)      |
-| Inserir  | O(1) amortizado | O(n) |
-| Remover  | O(1)      | O(n)      |
+|---|---:|---:|
+| Buscar | O(1) | O(n) |
+| Inserir | O(1) amortizado, em implementações que redimensionam | O(n) |
+| Remover | O(1) | O(n) |
 
-- **Caso médio O(1):** vale quando a função hash espalha bem as chaves e a tabela não está cheia demais, de modo que cada slot tem poucas entradas para comparar.
-- **Pior caso O(n):** acontece se muitas chaves colidirem, porque a busca precisa comparar várias entradas uma a uma.
-- A análise assume que calcular o hash e comparar chaves custa O(1). Para chaves grandes, como strings longas, esse custo depende do tamanho da chave.
+Aqui, n é o número de entradas armazenadas.
 
-### Fator de carga e redimensionamento
+### Por que o caso médio é O(1)?
 
-```
-α = n / m        n = número de entradas, m = número de posições
-```
+Se os hashes distribuírem bem as chaves e a tabela não estiver cheia demais, a tabela vai a uma posição candidata e verifica poucas entradas. O número de verificações não cresce proporcionalmente a n; por isso, dizemos que a operação é O(1) em média.
 
-Quanto maior o fator de carga `α`, mais colisões. Por isso, ao passar de um limite, a tabela **cresce** e redistribui todas as entradas no array maior (*rehash*). Esse redimensionamento custa O(n), mas acontece raramente, e diluído ao longo de muitas inserções o custo por inserção fica **O(1) amortizado**.
+Essa análise também supõe que calcular o hash e comparar as chaves custam O(1). Se a chave for uma string longa, calcular o hash ou comparar a string pode depender do tamanho dela.
 
----
+### Por que o pior caso pode ser O(n)?
 
-## 4. HashMap e HashSet
+Se muitas chaves acabarem na mesma região ou sequência de sondagem, a tabela pode precisar verificar muitas entradas. No limite, uma operação examina uma quantidade proporcional ao número de entradas: O(n).
 
-| | HashMap (`dict`) | HashSet (`set`) |
-|---|---|---|
-| O que guarda | pares chave → valor | elementos únicos |
-| Pergunta típica | "qual valor está associado a esta chave?" | "este elemento está no conjunto?" |
-| O que passa pela função hash | a chave | o próprio elemento |
-| Duplicatas | chave repetida **substitui** o valor antigo | elemento repetido é ignorado |
+### O que significa O(1) amortizado para inserção?
 
-O mecanismo interno (hash, índice, colisões) é o mesmo. No set, o elemento faz o papel da chave e não existe valor associado. Muitas implementações constroem o HashSet em cima de um HashMap, usando cada elemento como chave e um valor interno sem significado.
+Algumas inserções podem ser caras. Quando a tabela fica cheia demais, ela cresce e redistribui as entradas; esse processo, chamado **redimensionamento** ou **rehash**, pode custar O(n) naquele momento.
 
-```python
-# HashMap
-idades = {"ana": 25, "bia": 30}
-idades["caio"] = 19        # insere
-idades["bia"] = 31         # atualiza: a chave "bia" continua única
-idades["bia"]              # 31
-idades.get("duda", 0)      # 0 (chave ausente, sem erro)
-"ana" in idades            # True  → procura nas CHAVES
-del idades["ana"]          # remove
+Mas o redimensionamento não acontece em toda inserção. Ao analisar uma sequência longa de inserções, o custo dessas operações caras fica distribuído entre muitas inserções baratas. Por isso, o custo médio por inserção pode ser O(1) amortizado.
 
-# HashSet
-vistos = {"ana", "bia"}
-vistos.add("ana")          # nada muda: já existe
-"bia" in vistos            # True
-vistos.remove("bia")       # remove
-```
+## 10. Fator de carga e tamanho da tabela
 
----
+O **fator de carga**, frequentemente representado por α, compara o número de entradas com o número de posições:
 
-## 5. Em Python: `in` em dict vs. em lista
+    α = n / m
 
-```python
-for x in array:
-    if x in colecao:
-        ...
-```
+- n é o número de entradas.
+- m é o número de posições da tabela.
 
-| `colecao` é... | Custo de cada `in` | Custo do loop (n elementos) |
-|---|---|---|
-| `dict` ou `set` | O(1) em média | O(n) |
-| `list` de tamanho m | O(m) | O(n · m), ou O(n²) se m = n |
+Uma tabela que fica muito cheia tende a ter mais colisões. Muitas implementações acompanham o fator de carga e redimensionam a tabela quando necessário.
 
-- No `dict`/`set`, o `in` calcula o hash de `x`, vai à posição candidata e compara poucas entradas.
-- Na `list` não há hash: Python compara elemento por elemento até achar ou chegar ao fim.
+## 11. O custo de percorrer um array ou uma lista procurando algo
 
-Esse é o motivo de tantos problemas trocarem uma busca em lista por um `set` ou `dict`: um loop O(n²) vira O(n), ao custo de O(n) de memória extra.
+Em uma lista, não há cálculo de hash para descobrir a posição. Python compara os elementos um por um até encontrar o valor ou chegar ao fim.
 
-Atenção: `x in dicionario` procura **somente nas chaves**. Para procurar entre os valores é preciso `x in dicionario.values()`, que percorre tudo e custa O(n).
+    x in minha_lista
 
----
+Se a lista tem m elementos, a consulta custa O(m) no pior caso.
 
-## 6. Regras para as chaves
+Em um dict ou set, a consulta é O(1) em média, pelas condições já explicadas.
 
-- **Chaves iguais precisam ter o mesmo hash.** Caso contrário, a tabela procuraria a mesma chave em lugares diferentes. O inverso não é exigido: chaves diferentes podem ter o mesmo hash (colisão).
-- **Uma chave não pode mudar depois de inserida.** Se mudasse, seu hash mudaria e a tabela continuaria procurando no índice antigo. Por isso, Python só aceita como chave (ou elemento de set) objetos *hashable*, em geral imutáveis:
+Se percorremos n elementos e fazemos um teste de pertencimento para cada um:
 
-```python
-d = {(1, 2): "ok"}     # tupla: pode
-d = {[1, 2]: "erro"}   # TypeError: unhashable type: 'list'
-```
+| Coleção consultada | Custo de cada teste | Custo de n testes |
+|---|---:|---:|
+| dict ou set | O(1) em média | O(n) em média |
+| lista com m elementos | O(m) | O(n · m) |
+| lista com n elementos | O(n) | O(n²) |
 
----
+Exemplo:
 
-## 7. Dúvidas frequentes
+    for x in elementos:
+        if x in dicionario:
+            ...
 
-**O código hash aponta para onde?**
-Para lugar nenhum diretamente. Ele é um número que ainda precisa ser reduzido a um índice do array interno. É esse índice que indica o slot a consultar.
+Se elementos tem n itens e cada consulta ao dicionário custa O(1) em média, o loop custa O(n) em média.
 
-**A hash table é um array?**
-Ela é organizada sobre um array de slots. No encadeamento, cada slot guarda uma referência para uma lista de entradas; no endereçamento aberto, as entradas ficam nos próprios slots.
+Se, em vez disso, x for procurado em uma lista de tamanho n, cada teste pode custar O(n), e o loop inteiro pode custar O(n²).
 
-**A chave é armazenada ou só serve para calcular a posição?**
-É armazenada, junto com o valor. Sem a chave guardada, a tabela não teria como distinguir duas entradas que colidiram no mesmo índice.
+Por isso, em problemas de pertencimento repetido, trocar uma lista por um set pode reduzir o tempo de O(n²) para O(n), com o custo de usar memória adicional.
 
-**Com colisão, como a tabela sabe qual valor é de qual chave?**
-Cada entrada guarda seu próprio par chave–valor. A busca compara a chave procurada com a chave de cada entrada e devolve o valor da entrada que bater.
+## 12. Regras importantes para chaves e elementos
 
-**O set "mapeia um valor para ele mesmo"?**
-É melhor pensar que o set guarda só elementos, e que o elemento faz o papel da chave. Não há valor associado.
+### Objetos iguais precisam ter hashes iguais
 
-**Hash table, HashMap e HashSet são a mesma coisa?**
-Não. Hash table é a estrutura (o mecanismo de array + hash + tratamento de colisão). HashMap e HashSet são coleções implementadas com ela. Na prática os nomes se misturam, e muita gente diz "hash table" querendo dizer o próprio mapa.
+Se duas chaves são consideradas iguais, seus hashes precisam ser iguais. Caso contrário, a tabela poderia procurar a mesma chave em posições diferentes.
 
-**`chave in dicionario` percorre o dicionário inteiro?**
-Não. Calcula o hash da chave, vai à posição candidata e, se houver colisão, examina algumas posições vizinhas. Devolve `True` ao encontrar a chave e `False` ao concluir que ela não está lá.
+O inverso não é necessário: duas chaves diferentes podem ter o mesmo hash. Isso é uma colisão, e a tabela a resolve comparando as chaves.
 
-**Se é O(1), por que se fala em O(n)?**
-O(1) é o caso médio, que depende de boa distribuição dos hashes. O(n) é o pior caso teórico, com muitas colisões. Com as funções hash padrão de Python, ele é raro na prática.
+### A chave não deve mudar de uma forma que altere seu hash
 
-**O dict mantém ordem?**
-Desde o Python 3.7, o `dict` preserva a ordem de inserção. O `set` não garante ordem nenhuma. Nenhum dos dois fica ordenado pelo valor das chaves.
+Depois de inserir uma chave, ela deve continuar com o mesmo comportamento de hash e igualdade. Se seu hash mudar, a tabela pode procurar no lugar calculado anteriormente e não encontrá-la.
 
-**Quando não usar hash table?**
-Quando é preciso manter os dados ordenados, buscar por intervalo (todas as chaves entre `a` e `b`) ou achar o mínimo/máximo com frequência. Nesses casos, árvores de busca balanceadas ou heaps são mais adequados.
+Por isso, em Python, listas não podem ser usadas como chaves de dict nem como elementos de set: listas são mutáveis e não são hashable.
 
----
+    coordenadas = {(1, 2): "ponto"}  # funciona: a tupla pode ser hashable
+    # {[1, 2]: "ponto"}              # erro: listas não são hashable
 
-## 8. Resumo
+Uma tupla também só é hashable se todos os seus componentes forem hashable.
 
-1. A chave passa pela função hash e vira um índice do array interno.
-2. Chaves diferentes podem cair no mesmo índice: isso é uma colisão.
-3. Colisões são resolvidas com encadeamento (lista por slot) ou endereçamento aberto (outra posição do array).
-4. O hash indica onde procurar; a comparação de igualdade confirma a entrada.
-5. Busca, inserção e remoção custam O(1) em média e O(n) no pior caso.
-6. HashMap associa chave a valor; HashSet guarda elementos únicos.
+## 13. Dúvidas comuns respondidas
+
+### O código hash aponta para um endereço de memória?
+
+Não necessariamente. Ele ajuda a calcular um índice da tabela. O índice identifica a posição interna onde a busca começa.
+
+### A tabela hash é simplesmente um array?
+
+Uma forma comum de implementá-la usa um array de slots, mas a estrutura também inclui a função de hash e a estratégia para resolver colisões. No encadeamento, um slot pode apontar para uma coleção; no endereçamento aberto, as entradas ocupam posições do próprio array.
+
+### Com colisão, como sei qual valor pertence a cada chave?
+
+Cada entrada do mapa guarda a própria chave e o próprio valor. A tabela compara a chave procurada com a chave de cada entrada candidata e retorna o valor do par cuja chave for igual.
+
+### Hash table, HashMap e HashSet são sinônimos?
+
+Não exatamente. **Hash table** é a estrutura de hashing usada para organizar e localizar entradas. **HashMap** associa chaves a valores. **HashSet** guarda elementos únicos. Em alguns livros e linguagens, “hash table” também é usado como nome para um mapa implementado com hashing.
+
+### O set mapeia um elemento para ele mesmo?
+
+É mais claro dizer que o set guarda elementos únicos e usa cada elemento como chave de busca. O set não apresenta um valor separado associado ao elemento.
+
+### O dict procura entre as chaves ou entre os valores?
+
+A expressão x in d procura entre as chaves. Para procurar entre os valores, pode-se usar x in d.values(), mas essa busca percorre os valores e custa O(n).
+
+## 14. Resumo final
+
+1. Uma hash table usa uma chave para calcular um índice candidato em uma tabela.
+2. O código hash é um intermediário; não é um endereço físico de memória.
+3. A posição inicial é calculada, mas colisões podem exigir verificações adicionais.
+4. Encadeamento mantém uma coleção de entradas por posição; endereçamento aberto procura outros slots no próprio array.
+5. Cada entrada de um mapa guarda chave e valor juntos. A comparação de igualdade confirma a chave.
+6. HashMap associa chave a valor; em Python, use dict.
+7. HashSet guarda elementos únicos; em Python, use set.
+8. Busca e remoção costumam custar O(1) em média; inserção costuma ter O(1) amortizado quando há redimensionamento.
+9. No pior caso, colisões podem fazer uma operação custar O(n).
+10. Em Python, x in d verifica as chaves; x in lista percorre os elementos um a um.
+
