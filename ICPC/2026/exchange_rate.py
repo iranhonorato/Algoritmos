@@ -6,8 +6,11 @@ def main():
     if not input_data:
         return 
 
-    t, c, k = input_data[0].split()
-    print(min(int(c), int(t)*int(k)))
+    t = int(input_data[0])
+    c = int(input_data[1])
+    k = int(input_data[2])
+
+    print(min(c, t*k))
     
     return
 
@@ -15,4 +18,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-    
