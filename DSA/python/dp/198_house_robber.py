@@ -29,33 +29,23 @@ class Solution:
         return ans 
 
 
-
-
-    def rob_slow(self, nums: List[int]) -> int:
-        """This approach works but it's slow andcauses memory consume desnecessary"""
+    def rob(self, nums):
         memo = {}
 
-        def backtracking(idx):
-            if idx >= len(nums):
-                return 0
-        
-            if idx in memo:
-                return memo[idx]
+        def backtracking(house):
+            if house >= len(nums):
+                return 0 
 
-            max_from_here = 0
-        
-            for j in range(idx + 2, len(nums)):
-                max_from_here = max(max_from_here, backtracking(j))
+            elif house in memo:
+                return memo[house]
 
-            memo[idx] = nums[idx] + max_from_here
-            return memo[idx]
+            for idx in range(house, len(nums)):
+                curr = nums[idx] + backtracking(idx + 2)
+                next = backtracking(idx+1)
 
-        ans = 0
-        
-        for i in range(len(nums)):
-            ans = max(ans, backtracking(i))
+                memo[idx] = max(curr, next)
 
-        return ans
+            return memo[house]
 
 
 
@@ -65,17 +55,17 @@ class Solution:
         """The absolutly best solution for this problem"""
         memo = {}
 
-        def backtracking(i: int) -> int:
-            if i >= len(nums):
+        def backtracking(house: int) -> int:
+            if house >= len(nums):
                 return 0
 
-            if i in memo:
-                return memo[i]
+            if house in memo:
+                return memo[house]
             
-            not_current = backtracking(i + 1)
-            current = nums[i] + backtracking(i + 2)
+            not_current = backtracking(house + 1)
+            current = nums[house] + backtracking(house + 2)
 
-            memo[i] = max(current, not_current)
-            return memo[i]
+            memo[house] = max(current, not_current)
+            return memo[house]
 
         return backtracking(0)

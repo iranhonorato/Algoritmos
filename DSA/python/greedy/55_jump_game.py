@@ -11,3 +11,16 @@ class Solution:
                 goal = idx
                 
         return goal == 0
+
+
+
+    def canJump_second_solution(self, nums: list[int]) -> bool:
+        goal = len(nums) - 1 
+
+        for i in range(len(nums)):
+            pos = len(nums)-1-i
+            mov = nums[pos] 
+            if mov + pos >= goal:
+                goal = pos 
+
+        return goal == 0 
